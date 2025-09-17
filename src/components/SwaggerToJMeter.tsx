@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Download, FileText, Settings, Zap } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import * as yaml from "js-yaml";
 
@@ -37,7 +36,6 @@ export const SwaggerToJMeter = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
   const [jmeterXml, setJmeterXml] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<JMeterConfig>({
     threadCount: 10,
     rampUpTime: 60,
@@ -58,7 +56,6 @@ export const SwaggerToJMeter = () => {
     useKeepAlive: true,
     enableReporting: true
   });
-  const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const { toast } = useToast();
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -722,16 +719,8 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
     }
 
     setIsProcessing(true);
-    setProgress(0);
     
     try {
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90));
-      }, 500);
-
-      setProgress(30);
-      
       // Parse swagger/openapi spec
       let spec;
       try {
@@ -757,37 +746,18 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
         throw new Error("No paths found in the specification");
       }
       
-      setProgress(60);
+      // Generate JMX directly without AI
+      const jmxContent = generateJMeterXml(spec, config);
+      setJmeterXml(jmxContent);
+
+      const endpointCount = Object.keys(spec.paths).length;
       
-      // Call AI-powered JMeter generator
-      const { data, error } = await supabase.functions.invoke('ai-jmeter-generator', {
-        body: {
-          swaggerSpec: spec,
-          loadConfig: config,
-          aiProvider
-        }
-      });
-
-      clearInterval(progressInterval);
-      setProgress(100);
-
-      if (error) {
-        console.error('Swagger to JMeter error:', error);
-        throw new Error(error.message || 'Unknown error occurred');
-      }
-
-      if (!data || !data.jmeterXml) {
-        throw new Error('No JMeter XML received from server');
-      }
-
-      setJmeterXml(data.jmeterXml);
-
       toast({
-        title: "AI-Generated JMeter Test Plan Ready",
-        description: `Created with ${data.metadata?.provider || aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'} for ${data.metadata?.endpoints || 'multiple'} endpoints`,
+        title: "JMeter Test Plan Generated",
+        description: `Successfully generated test plan for ${endpointCount} endpoints`,
       });
     } catch (error) {
-      console.error('Swagger to JMeter error:', error);
+      console.error('Error generating JMeter file:', error);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       
       toast({
@@ -989,19 +959,7 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="aiProvider">AI Provider</Label>
-                <Select value={aiProvider} onValueChange={(value: 'google' | 'openai') => setAiProvider(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google">Google AI (Gemini)</SelectItem>
-                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
+               
               <h4 className="text-sm font-medium">JMeter Configuration</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
@@ -1066,20 +1024,8 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
                 className="w-full"
               >
                 <Zap className="mr-2 h-4 w-4" />
-                {isProcessing ? `Generating JMeter Test Plan with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}...` : `Generate JMeter Test Plan with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}`}
+                {isProcessing ? "Generating JMeter Test Plan..." : "Generate JMeter Test Plan"}
               </Button>
-
-              {isProcessing && (
-                <div className="space-y-2">
-                  <Progress value={progress} className="w-full" />
-                  <p className="text-sm text-muted-foreground text-center">
-                    {progress < 30 ? "Analyzing Swagger specification..." :
-                     progress < 60 ? "Parsing API endpoints..." :
-                     progress < 90 ? `Generating JMeter test plan with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}...` :
-                     "Finalizing results..."}
-                  </p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
