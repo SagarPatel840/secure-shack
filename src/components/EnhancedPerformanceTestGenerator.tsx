@@ -383,11 +383,14 @@ export const EnhancedPerformanceTestGenerator = () => {
     setAiAnalysis(null);
 
     try {
+      console.log('Processing Swagger content...');
       const spec = swaggerContent.trim().startsWith('{') 
         ? JSON.parse(swaggerContent) 
         : yaml.load(swaggerContent) as any;
 
+      console.log('Parsed spec:', spec);
       const jmxContent = generateSwaggerJMeterXml(spec, swaggerConfig);
+      console.log('Generated JMX content length:', jmxContent.length);
       setSwaggerJmeterXml(jmxContent);
 
       toast({
@@ -974,7 +977,12 @@ ${rtfContent}
                   </div>
 
                   <Button 
-                    onClick={processSwagger} 
+                    onClick={() => {
+                      console.log('Generate JMeter Test Plan button clicked');
+                      console.log('Swagger content length:', swaggerContent.length);
+                      console.log('Base URL:', swaggerConfig.baseUrl);
+                      processSwagger();
+                    }} 
                     disabled={!swaggerContent.trim() || !swaggerConfig.baseUrl.trim() || isSwaggerProcessing}
                     className="w-full"
                     size="lg"
