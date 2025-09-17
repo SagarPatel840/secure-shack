@@ -176,11 +176,30 @@ export const HarToJMeter = () => {
         throw new Error(error.message || 'Unknown error occurred');
       }
 
+      console.log('HAR to JMX response data:', data);
+
       if (!data || !data.jmxContent) {
         throw new Error('No JMX content received from server');
       }
 
-      setResult(data);
+      const safeResult: ProcessingResult = {
+        jmxContent: data.jmxContent,
+        analysis: data.analysis ?? {
+          correlationFields: [],
+          requestGroups: [],
+          parameterization: [],
+          scenarios: [],
+          assertions: []
+        },
+        summary: data.summary ?? {
+          totalRequests: 0,
+          uniqueDomains: [],
+          methodsUsed: [],
+          avgResponseTime: 0
+        }
+      };
+
+      setResult(safeResult);
       
       toast({
         title: "JMeter Script Generated",
