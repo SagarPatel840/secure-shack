@@ -513,29 +513,79 @@ export const EnhancedPerformanceTestGenerator = () => {
     setHarResult(null);
 
     try {
+      console.log('Starting HAR processing with AI provider:', aiProvider);
+      
       const progressInterval = setInterval(() => {
         setHarProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
       const { data, error } = await supabase.functions.invoke('har-to-jmeter', {
-        body: { harContent, aiProvider }
+        body: { 
+          harContent, 
+          aiProvider,
+          loadConfig: {
+            testPlanName: "HAR Performance Test",
+            threadCount: 10,
+            rampUpTime: 60,
+            duration: 300,
+            loopCount: 1,
+            addAssertions: true,
+            addCorrelation: true,
+            addCsvConfig: false
+          }
+        }
       });
 
       clearInterval(progressInterval);
       setHarProgress(100);
 
       if (error) {
+        console.error('HAR processing error:', error);
         throw new Error(error.message || 'Failed to process HAR file');
       }
 
-      if (data?.success) {
-        setHarResult(data.data);
+      if (!data) {
+        console.error('No data received from HAR processing');
+        throw new Error('No data received from HAR processing');
+      }
+
+      console.log('HAR processing response received:', {
+        hasJmxContent: !!data.jmxContent,
+        hasError: !!data.error,
+        summary: data.summary
+      });
+
+      // Check if there's an error in the response
+      if (data.error) {
+        throw new Error(data.error || 'HAR processing failed');
+      }
+
+      // The HAR function returns data directly (not wrapped in success/data structure)
+      if (data.jmxContent) {
+        const harResultData = {
+          jmxContent: data.jmxContent,
+          analysis: {
+            correlationFields: [],
+            requestGroups: [],
+            parameterization: [],
+            scenarios: [],
+            assertions: []
+          },
+          summary: data.summary || {
+            totalRequests: 0,
+            uniqueDomains: [],
+            methodsUsed: [],
+            avgResponseTime: 0
+          }
+        };
+        
+        setHarResult(harResultData);
         toast({
           title: "HAR file processed successfully",
-          description: "JMeter test plan has been generated"
+          description: `JMeter test plan generated with ${data.summary?.totalRequests || 0} requests`
         });
       } else {
-        throw new Error(data?.error || 'Unknown error occurred');
+        throw new Error('No JMX content received from HAR processing');
       }
     } catch (error: any) {
       console.error('HAR processing error:', error);
