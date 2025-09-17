@@ -66,6 +66,7 @@ export const EnhancedPerformanceTestGenerator = () => {
   const [swaggerContent, setSwaggerContent] = useState("");
   const [swaggerJmeterXml, setSwaggerJmeterXml] = useState("");
   const [isSwaggerProcessing, setIsSwaggerProcessing] = useState(false);
+  const [swaggerProgress, setSwaggerProgress] = useState(0);
   const [swaggerConfig, setSwaggerConfig] = useState<SwaggerConfig>({
     baseUrl: "",
     groupBy: 'tag'
@@ -379,35 +380,77 @@ export const EnhancedPerformanceTestGenerator = () => {
     }
 
     setIsSwaggerProcessing(true);
+    setSwaggerProgress(0);
     setSwaggerJmeterXml("");
     setAiAnalysis(null);
 
     try {
-      console.log('Processing Swagger content...');
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setSwaggerProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
+
+      console.log('Processing Swagger content with AI...');
       const spec = swaggerContent.trim().startsWith('{') 
         ? JSON.parse(swaggerContent) 
         : yaml.load(swaggerContent) as any;
 
       console.log('Parsed spec:', spec);
-      const jmxContent = generateSwaggerJMeterXml(spec, swaggerConfig);
-      console.log('Generated JMX content length:', jmxContent.length);
-      setSwaggerJmeterXml(jmxContent);
+      console.log('Using AI provider:', aiProvider);
+
+      // Prepare load config for the edge function
+      const loadConfig = {
+        testPlanName: "API Performance Test",
+        threadCount: 10,
+        rampUpTime: 60,
+        duration: 300,
+        loopCount: 1,
+        addAssertions: true,
+        addCorrelation: true,
+        addCsvConfig: false,
+        baseUrl: swaggerConfig.baseUrl
+      };
+
+      // Call the AI-powered JMeter generator edge function
+      const { data, error } = await supabase.functions.invoke('ai-jmeter-generator', {
+        body: {
+          swaggerSpec: spec,
+          loadConfig: loadConfig,
+          aiProvider: aiProvider
+        }
+      });
+
+      clearInterval(progressInterval);
+      setSwaggerProgress(100);
+
+      if (error) {
+        console.error('AI JMeter generation error:', error);
+        throw new Error(error.message || 'Failed to generate JMeter test plan with AI');
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Unknown error occurred during AI generation');
+      }
+
+      console.log('AI-generated JMX content received:', data.metadata);
+      setSwaggerJmeterXml(data.jmeterXml);
 
       toast({
         title: "JMeter test plan generated successfully",
-        description: "You can now download the JMX file"
+        description: `Generated with ${data.metadata?.provider || aiProvider} AI - ${data.metadata?.endpoints || 0} endpoints processed`
       });
+
     } catch (error: any) {
-      console.error('Error processing swagger:', error);
+      console.error('Error processing swagger with AI:', error);
       toast({
-        title: "Processing failed",
-        description: error.message || "Failed to generate JMeter test plan",
+        title: "AI processing failed",
+        description: error.message || "Failed to generate JMeter test plan with AI",
         variant: "destructive"
       });
     } finally {
       setIsSwaggerProcessing(false);
     }
-  }, [swaggerContent, swaggerConfig, toast]);
+  }, [swaggerContent, swaggerConfig, aiProvider, toast]);
 
   const downloadSwaggerJMX = () => {
     if (!swaggerJmeterXml) return;
@@ -990,7 +1033,7 @@ ${rtfContent}
                     {isSwaggerProcessing ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Generating JMeter XML...
+                        Generating with AI...
                       </>
                     ) : (
                       <>
@@ -999,6 +1042,16 @@ ${rtfContent}
                       </>
                     )}
                   </Button>
+
+                  {isSwaggerProcessing && swaggerProgress > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Processing Progress</span>
+                        <span>{swaggerProgress}%</span>
+                      </div>
+                      <Progress value={swaggerProgress} className="w-full" />
+                    </div>
+                  )}
 
                   {swaggerJmeterXml && (
                     <div className="pt-4 border-t space-y-3">
