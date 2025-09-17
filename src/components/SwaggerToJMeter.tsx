@@ -1066,7 +1066,7 @@ CSV Config: ${config.generateCsvConfig ? 'Enabled' : 'Disabled'}</stringProp>
                 className="w-full"
               >
                 <Zap className="mr-2 h-4 w-4" />
-                {isProcessing ? `Generating with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}...` : `Generate JMX with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}`}
+                {isProcessing ? `Generating JMeter Test Plan with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}...` : `Generate JMeter Test Plan with ${aiProvider === 'google' ? 'Google AI' : 'Azure OpenAI'}`}
               </Button>
 
               {isProcessing && (
