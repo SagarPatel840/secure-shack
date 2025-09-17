@@ -72,7 +72,7 @@ serve(async (req) => {
 
     console.log(`Found ${apiInfo.methods.length} API endpoints to analyze`);
 
-    // Generate JMX generation prompt using user's exact specification
+    // Use the exact prompt provided by the user for Swagger JMX generation
     const jmxPrompt = `You are an expert in JMeter test plan generation.  
 Your task is to create a complete Apache JMeter (.jmx) file based on the provided Swagger (OpenAPI) specification.  
 
@@ -110,7 +110,13 @@ Swagger/OpenAPI specification (YAML or JSON format) will be provided.
 Generate the complete JMX file according to the above rules.
 
 ### Swagger/OpenAPI specification:
-${JSON.stringify(swaggerSpec, null, 2)}`;
+${JSON.stringify(swaggerSpec, null, 2)}
+
+### Load Configuration:
+- Thread Count: ${loadConfig.threadCount}
+- Ramp-up Time: ${loadConfig.rampUpTime} seconds
+- Duration: ${loadConfig.duration} seconds
+- Loop Count: ${loadConfig.loopCount}`;
 
     let jmeterXmlFromAI = "";
 
