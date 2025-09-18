@@ -98,6 +98,29 @@ Your task is to create a complete Apache JMeter (.jmx) file based on the provide
    - Add \`JSON Extractor\` or \`Regular Expression Extractor\` for correlation of response values (e.g., auth token).  
    - Ensure the JMX is well-formed XML and can be directly opened in JMeter without errors.  
 
+### Body Data Rules:  
+1. **Swagger-based JMX**  
+   - For each request body defined in Swagger schemas:  
+     - Map schema fields to \`\${variableName}\` placeholders instead of hardcoded values.  
+     - Use CSV Data Set Config to supply values for those variables.  
+     - If the schema has examples/defaults, use them as initial CSV values.  
+     - Support JSON, XML, or form-data body formats depending on Swagger definition.  
+
+   Example for Swagger schema:  
+   \`\`\`json
+   {
+     "username": "\${username}",
+     "password": "\${password}",
+     "age": \${age}
+   }
+   \`\`\`
+
+2. **General Body Handling**  
+   - Always wrap request body in elementProp → Argument.value inside the JMX XML.  
+   - Ensure Content-Type in HeaderManager matches the body type.  
+   - If no body is provided in Swagger, skip body section but keep headers.  
+   - Ensure the JMX is valid and directly importable in JMeter.  
+
 ### Output:  
 - Provide the final JMX file content as valid XML inside code block.  
 - Do not summarize, only return the JMX file.  

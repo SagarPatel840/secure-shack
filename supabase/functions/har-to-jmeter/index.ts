@@ -84,6 +84,29 @@ Your task is to generate a complete Apache JMeter (.jmx) file based on the provi
    - Add a \`View Results Tree\` listener for debugging.  
    - Ensure the JMX is well-formed XML and directly runnable in JMeter.  
 
+### Body Data Rules:  
+1. **HAR-based JMX**  
+   - For each request with a postData field in the HAR file:  
+     - Insert the exact JSON/XML/form-data into Body Data of the corresponding HTTP Sampler.  
+     - Replace dynamic values (IDs, emails, tokens) with \`\${variableName}\`.  
+     - Externalize those variables into CSV Data Set Config.  
+
+   Example HAR Body conversion:  
+   HAR postData:  
+   \`\`\`json
+   {"orderId":12345,"status":"PENDING"}
+   \`\`\`
+   JMX Body Data:  
+   \`\`\`json
+   {"orderId":"\${orderId}","status":"\${status}"}
+   \`\`\`
+
+2. **General Body Handling**  
+   - Always wrap request body in elementProp → Argument.value inside the JMX XML.  
+   - Ensure Content-Type in HeaderManager matches the body type.  
+   - If no body is provided in HAR, skip body section but keep headers.  
+   - Ensure the JMX is valid and directly importable in JMeter.  
+
 ### Output:  
 - Provide the final JMX file content as valid XML inside a code block.  
 - Do not summarize, only return the JMX file.  
