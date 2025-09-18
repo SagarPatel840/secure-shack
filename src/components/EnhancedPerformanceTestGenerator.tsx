@@ -73,6 +73,7 @@ export const EnhancedPerformanceTestGenerator = () => {
   });
   const [aiProvider, setAiProvider] = useState<'google' | 'openai'>('google');
   const [aiAnalysis, setAiAnalysis] = useState<Analysis | null>(null);
+  const [swaggerResult, setSwaggerResult] = useState<{ totalEndpoints: number; aiProvider: string } | null>(null);
 
   // HAR to JMX state
   const [harFile, setHarFile] = useState<File | null>(null);
@@ -435,9 +436,22 @@ export const EnhancedPerformanceTestGenerator = () => {
       console.log('AI-generated JMX content received:', data.metadata);
       setSwaggerJmeterXml(data.jmeterXml);
 
+      // Calculate total endpoints from the Swagger spec
+      const totalEndpoints = Object.keys(spec.paths || {}).reduce((total, path) => {
+        const pathMethods = Object.keys(spec.paths[path] || {}).filter(method => 
+          ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(method)
+        );
+        return total + pathMethods.length;
+      }, 0);
+
+      setSwaggerResult({
+        totalEndpoints,
+        aiProvider: data.metadata?.provider || aiProvider
+      });
+
       toast({
         title: "JMeter test plan generated successfully",
-        description: `Generated with ${data.metadata?.provider || aiProvider} AI - ${data.metadata?.endpoints || 0} endpoints processed`
+        description: `Generated with ${data.metadata?.provider || aiProvider} AI - ${totalEndpoints} endpoints processed`
       });
 
     } catch (error: any) {
@@ -1105,10 +1119,22 @@ ${rtfContent}
 
                   {swaggerJmeterXml && (
                     <div className="pt-4 border-t space-y-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-3">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span className="font-medium">JMeter Test Plan Generated</span>
                       </div>
+                      {swaggerResult && (
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <div className="font-medium">Total Endpoints</div>
+                            <div className="text-lg font-bold text-primary">{swaggerResult.totalEndpoints}</div>
+                          </div>
+                          <div>
+                            <div className="font-medium">AI Provider</div>
+                            <div className="text-lg font-bold text-primary">{swaggerResult.aiProvider}</div>
+                          </div>
+                        </div>
+                      )}
                       <Button onClick={downloadSwaggerJMX} className="w-full" variant="outline">
                         <Download className="w-4 h-4 mr-2" />
                         Download JMX File
